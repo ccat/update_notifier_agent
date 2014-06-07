@@ -135,7 +135,8 @@ class Agent():
                 tempPackage["name"]=line.split(": ")[1][0:-1]
 
             elif(line.startswith("Version:")):
-                tempPackage["current"]=line.split(": ")[1][0:-1]
+                tempPackage["current"] = line.split(": ")[1][0:-1]
+                tempPackage["latest"] = tempPackage["current"]
                 tempResult[tempPackage["name"]] = tempPackage
                 tempPackage = None
 
@@ -166,7 +167,6 @@ class Agent():
                 if(item[0] not in result):
                     result[item[0]] = {"name":item[0],"current":item[1][1:]}
                 result[item[0]]["latest"] = item[3][0:-1]
-                #openssl (1.0.1f-1ubuntu2.1 => 1.0.1f-1ubuntu2.2)
 
         return result
 
