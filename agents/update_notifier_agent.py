@@ -78,10 +78,12 @@ class Agent():
         self.set("virtualenvs", json.dumps(result))
         return result
 
-    def check_all(self):
+    def check_all(self,debug = False):
         result = {"timestamp": datetime.datetime.utcnow().isoformat()}
         result = self.check_pip(result)
         result = self.check_dpkg(result)
+        if(debug):
+            print result
         return result
 
     def check_pip(self,result):
@@ -141,7 +143,7 @@ class Agent():
 
     def _dpkg_update(self,result):
         try:
-            subprocess.check_call(["apt-get", "update"])
+            subprocess.check_output(["apt-get", "update"])
         except:
             result["status"] = "error"
             return result
@@ -201,8 +203,9 @@ def main():
 
     agent = Agent()
     argvs = sys.argv
+    debug = False
     if(len(argvs) > 1):
-        if(argvs[1] == "scan"):
+        if(argvs[1] == "scan_envs"):
             agent.find_virtualenvs()
         elif(argvs[1] == "install"):
             if(len(argvs) > 2):
@@ -212,8 +215,10 @@ def main():
                 agent.register(userkey)
             agent.install()
             agent.find_virtualenvs()
+        elif(argvs[1] == "debug"):
+            debug = True
     agent.save()
-    agent.upload(agent.check_all())
+    agent.upload(agent.check_all(debug))
 
 
 if __name__ == "__main__":
