@@ -78,14 +78,34 @@ class Agent():
         self.set("virtualenvs", json.dumps(result))
         return result
 
-    def check_pip(self):
+    def check_all(self):
         result = {"timestamp": datetime.datetime.utcnow().isoformat()}
+        result = self.check_pip(result)
+        result = self.check_dpkg(result)
+        return result
+
+    def check_pip(self,result):
+        #result = {"timestamp": datetime.datetime.utcnow().isoformat()}
         envs = json.loads(self.get("virtualenvs"))
 
         temp = {}
         for item in envs:
             temp[item] = self._pipcheck(item)
         result["pip"] = json.dumps(temp)
+
+        return result
+
+    def check_dpkg(self,result):
+        try:
+            dpkg_file = open("/var/lib/dpkg/available","r")
+        except:
+            return result
+
+        tempResult = self._dpkg_current(dpkg_file)
+        dpkg_file.close()
+        tempResult = self._dpkg_update(tempResult)
+
+        result["dpkg"] = json.dumps(tempResult)
 
         return result
 
@@ -102,6 +122,51 @@ class Agent():
 
     def get(self, key):
         return self.config.get("update_notifier", key)
+
+    def _dpkg_current(self,dpkg_file):
+        tempResult = {}
+        tempPackage = None
+
+        for line in dpkg_file:
+            if(line.startswith("Package:")):
+                tempPackage = {}
+                tempPackage["name"]=line.split(": ")[1]
+
+            elif(line.startswith("Version:")):
+                tempPackage["current"]=line.split(": ")[1]
+                tempResult[tempPackage["name"]] = tempPackage
+                tempPackage = None
+
+        return tempResult
+
+    def _dpkg_update(self,result):
+        try:
+            subprocess.check_call(["apt-get", "update"])
+        except:
+            result["status"] = "error"
+            return result
+        try:
+            tempStr = subprocess.check_output(["apt-get","-V","-s","upgrade"])
+        except:
+            result["status"] = "error"
+            return result
+
+        tempStr = tempStr.split("\n")
+        flag=False
+        for item in tempStr:
+            if(item.startswith("The following packages will be upgraded")):
+                flag=True
+            elif(item.find("upgraded,")!=-1):
+                flag=False
+            elif(flag):
+                item = item.lstrip()
+                item = item.split(" ")
+                if(item[0] not in result):
+                    result[item[0]] = {"name":item[0],"current":item[1][1:]}
+                result[item[0]]["latest"] = item[3][0:-1]
+                #openssl (1.0.1f-1ubuntu2.1 => 1.0.1f-1ubuntu2.2)
+
+        return result
 
     def _pipcheck(self, activate):
         f = open("/tmp/tempcommand", "w")
@@ -148,7 +213,7 @@ def main():
             agent.install()
             agent.find_virtualenvs()
     agent.save()
-    agent.upload(agent.check_pip())
+    agent.upload(agent.check_all())
 
 
 if __name__ == "__main__":
