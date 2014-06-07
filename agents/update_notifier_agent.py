@@ -132,10 +132,10 @@ class Agent():
         for line in dpkg_file:
             if(line.startswith("Package:")):
                 tempPackage = {}
-                tempPackage["name"]=line.split(": ")[1]
+                tempPackage["name"]=line.split(": ")[1][0:-1]
 
             elif(line.startswith("Version:")):
-                tempPackage["current"]=line.split(": ")[1]
+                tempPackage["current"]=line.split(": ")[1][0:-1]
                 tempResult[tempPackage["name"]] = tempPackage
                 tempPackage = None
 
